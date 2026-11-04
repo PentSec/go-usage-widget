@@ -281,6 +281,9 @@ test("tokenBuckets day range fills gaps and clips old data", () => {
     assert.equal(buckets.peak, 100);
     assert.equal(buckets.from, "2026-11-02");
     assert.equal(buckets.to, "2026-11-15");
+    assert.equal(buckets.labels[0], "2026-11-02");
+    assert.equal(buckets.labels[12], "2026-11-14");
+    assert.equal(buckets.labels[13], "2026-11-15");
 });
 
 test("tokenBuckets week range starts on Monday", () => {
@@ -299,6 +302,8 @@ test("tokenBuckets week range starts on Monday", () => {
     assert.equal(buckets.total, 129);
     assert.equal(buckets.from, "2026-08-24");
     assert.equal(buckets.to, "2026-11-15");
+    assert.equal(buckets.labels[0], "2026-08-24");
+    assert.equal(buckets.labels[11], "2026-11-09");
 });
 
 test("tokenBuckets month range groups by calendar month", () => {
@@ -315,6 +320,8 @@ test("tokenBuckets month range groups by calendar month", () => {
     assert.equal(buckets.values[5], 1000);
     assert.equal(buckets.from, "2025-12-01");
     assert.equal(buckets.to, "2026-11-30");
+    assert.equal(buckets.labels[0], "2025-12-01");
+    assert.equal(buckets.labels[11], "2026-11-01");
 });
 
 test("tokenBuckets all range spans the whole history", () => {

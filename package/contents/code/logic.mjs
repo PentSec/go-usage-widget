@@ -337,8 +337,13 @@ export function tokenBuckets(days, mode, now) {
     }
 
     const values = [];
+    const labels = [];
     for (let index = 0; index < count; ++index) {
         values.push(0);
+        labels.push(dayKeyFromMs(
+            mode === "month" || mode === "all"
+                ? addMonths(startMs, index)
+                : startMs + index * (mode === "week" ? 7 : 1) * DAY_MS));
     }
 
     Object.keys(totals).forEach((key) => {
@@ -365,6 +370,7 @@ export function tokenBuckets(days, mode, now) {
     return {
         mode: range.key,
         values: values,
+        labels: labels,
         from: dayKeyFromMs(startMs),
         to: dayKeyFromMs(endMs),
         total: total,

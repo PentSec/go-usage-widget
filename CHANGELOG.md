@@ -8,7 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- Token usage chart under the budget rows, with day, week, month and all-time
+- Token usage curve under the budget rows, with day, week, month and all-time
   ranges, fed by the local OpenCode databases. Cache reads are excluded, so the
   figure counts input, output and reasoning only. Enabled by default and
   switchable in the settings.

@@ -20,15 +20,15 @@ jobs:
           node-version: "22"
 
       - name: Logic tests (default timezone)
-        run: node --test
+        run: node --test "tests/*.test.mjs"
 
       - name: Logic tests (America/New_York)
-        run: node --test
+        run: node --test "tests/*.test.mjs"
         env:
           TZ: America/New_York
 
       - name: Logic tests (Asia/Tokyo)
-        run: node --test
+        run: node --test "tests/*.test.mjs"
         env:
           TZ: Asia/Tokyo
 

@@ -14,7 +14,7 @@ the three budget windows: **5 hours**, **7 days** and **1 calendar month**.
   `+Npp` (reserve), `-Npp` (deficit) or `on pace`.
 - Compact panel representation: one chip per window, coloured by severity, with
   the full breakdown in the tooltip.
-- Token usage chart under the budget rows, grouped by day, week, month or all
+- Token usage curve under the budget rows, grouped by day, week, month or all
   time, read from your local OpenCode databases.
 - Full popup with the complete row layout and a refresh button.
 - Everything follows your Plasma theme, colour scheme and accent colour. No
@@ -69,8 +69,9 @@ redirected somewhere else.
 
 ## Token chart
 
-Below the budget rows the popup draws a small bar chart of the tokens you have
-used, with `Day`, `Week`, `Month` and `All` ranges. It reads only your local
+Below the budget rows the popup draws a smooth curve of the tokens you have
+used, with `Day`, `Week`, `Month` and `All` ranges. Hovering a point shows its
+value and date in the header. It reads only your local
 `opencode.db`, aggregating `session_message` when that table exists and falling
 back to the older `message` table otherwise.
 

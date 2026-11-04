@@ -18,11 +18,11 @@ test: test-logic test-helper
 
 test-logic:
 	@echo "== logic (node, default timezone)"
-	node --test
+	node --test "tests/*.test.mjs"
 	@echo "== logic (node, America/New_York)"
-	TZ=America/New_York node --test
+	TZ=America/New_York node --test "tests/*.test.mjs"
 	@echo "== logic (node, Asia/Tokyo)"
-	TZ=Asia/Tokyo node --test
+	TZ=Asia/Tokyo node --test "tests/*.test.mjs"
 
 test-helper:
 	@echo "== helper (python unittest)"
