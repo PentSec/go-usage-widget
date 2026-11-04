@@ -47,6 +47,9 @@ ColumnLayout {
     readonly property real peak: buckets && buckets.peak > 0 ? buckets.peak : 0
     readonly property bool empty: !busy && (!buckets || buckets.total === 0)
     readonly property bool hovering: hoverIndex >= 0 && hoverIndex < values.length
+    readonly property var rangeEntries: Logic.TOKEN_RANGES.map(function (entry) {
+        return { key: entry.key, label: Format.rangeLabel(entry.key) };
+    })
 
     function bucketLabel(index) {
         if (!buckets || !buckets.labels || index < 0 || index >= buckets.labels.length) {
@@ -95,54 +98,13 @@ ColumnLayout {
             Layout.fillWidth: true
         }
 
-        Row {
-            spacing: 2
+        ChipBar {
+            style: chart.style
+            entries: chart.rangeEntries
+            current: chart.range
 
-            Repeater {
-                model: Logic.TOKEN_RANGES
-
-                delegate: Item {
-                    id: chip
-
-                    required property var modelData
-
-                    readonly property bool active: chart.range === modelData.key
-                    readonly property bool hovered: hover.hovered
-
-                    implicitWidth: chipLabel.implicitWidth + Kirigami.Units.smallSpacing * 2
-                    implicitHeight: chipLabel.implicitHeight + Math.round(Kirigami.Units.smallSpacing / 1.5)
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: height / 2
-                        color: chip.active
-                            ? chart.style.accentTint
-                            : (chip.hovered ? chart.style.track : "transparent")
-
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Kirigami.Units.shortDuration
-                            }
-                        }
-                    }
-
-                    Text {
-                        id: chipLabel
-
-                        anchors.centerIn: parent
-                        text: Format.rangeLabel(chip.modelData.key)
-                        color: chip.active ? chart.style.text : chart.style.muted
-                        font: Kirigami.Theme.smallFont
-                    }
-
-                    HoverHandler {
-                        id: hover
-                    }
-
-                    TapHandler {
-                        onTapped: chart.rangePicked(chip.modelData.key)
-                    }
-                }
+            onPicked: function(key) {
+                chart.rangePicked(key);
             }
         }
     }

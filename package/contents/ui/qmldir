@@ -1,6 +1,7 @@
 Style 1.0 Style.qml
 UsageRow 1.0 UsageRow.qml
 TokenChart 1.0 TokenChart.qml
+ChipBar 1.0 ChipBar.qml
 SettingsCard 1.0 SettingsCard.qml
 SettingsRow 1.0 SettingsRow.qml
 SettingsPanel 1.0 SettingsPanel.qml

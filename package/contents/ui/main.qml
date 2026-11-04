@@ -414,7 +414,9 @@ PlasmoidItem {
                             anchors.centerIn: parent
                             width: 18
                             height: 18
-                            source: Qt.resolvedUrl("../assets/adjustments.svg")
+                            source: root.showSettings
+                                ? Qt.resolvedUrl("../assets/arrow-left-dashed.svg")
+                                : Qt.resolvedUrl("../assets/adjustments.svg")
                             sourceSize.width: 18
                             sourceSize.height: 18
                             visible: false

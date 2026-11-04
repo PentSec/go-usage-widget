@@ -46,10 +46,11 @@ make uninstall
 
 ## Configuration
 
-The gear icon in the popup header opens an in-widget settings dashboard:
-display toggles, the four colour groups and the background controls. It writes
-to the same configuration as the standard *Configure* dialog, so both stay in
-sync and either can be used.
+The gear icon in the popup header opens an in-widget settings dashboard, split
+into **Display**, **Colours** and **Background** sections so each one stays a
+short page instead of an endless scroll. The same icon turns into a back arrow
+while the dashboard is open. It writes to the same configuration as the standard
+*Configure* dialog, so both stay in sync and either can be used.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
