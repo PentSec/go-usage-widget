@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+
+  <group name="General">
+    <entry name="pollInterval" type="Int">
+      <label>Seconds between refreshes.</label>
+      <default>60</default>
+      <min>30</min>
+      <max>3600</max>
+    </entry>
+
+    <entry name="showPace" type="Bool">
+      <label>Show how usage compares with the elapsed part of the window.</label>
+      <default>true</default>
+    </entry>
+
+    <entry name="showCountdown" type="Bool">
+      <label>Show the time left before each window resets.</label>
+      <default>true</default>
+    </entry>
+
+    <entry name="useCustomBarColors" type="Bool">
+      <label>Use custom colours for the bar fill.</label>
+      <default>false</default>
+    </entry>
+
+    <entry name="barOkColor" type="Color">
+      <label>Bar colour below the warning threshold.</label>
+      <default>#3fb950</default>
+    </entry>
+
+    <entry name="barWarnColor" type="Color">
+      <label>Bar colour at or above 75%.</label>
+      <default>#d29922</default>
+    </entry>
+
+    <entry name="barDangerColor" type="Color">
+      <label>Bar colour at or above 90%.</label>
+      <default>#f85149</default>
+    </entry>
+
+    <entry name="useCustomPercentColors" type="Bool">
+      <label>Use custom colours for the percentage text.</label>
+      <default>false</default>
+    </entry>
+
+    <entry name="percentOkColor" type="Color">
+      <label>Percentage colour below the warning threshold.</label>
+      <default>#3fb950</default>
+    </entry>
+
+    <entry name="percentWarnColor" type="Color">
+      <label>Percentage colour at or above 75%.</label>
+      <default>#d29922</default>
+    </entry>
+
+    <entry name="percentDangerColor" type="Color">
+      <label>Percentage colour at or above 90%.</label>
+      <default>#f85149</default>
+    </entry>
+
+    <entry name="useCustomPaceColors" type="Bool">
+      <label>Use custom colours for the pace column.</label>
+      <default>false</default>
+    </entry>
+
+    <entry name="paceReserveColor" type="Color">
+      <label>Pace colour when usage is below the elapsed share.</label>
+      <default>#3fb950</default>
+    </entry>
+
+    <entry name="paceDeficitColor" type="Color">
+      <label>Pace colour when usage is above the elapsed share.</label>
+      <default>#d29922</default>
+    </entry>
+
+    <entry name="paceOnPaceColor" type="Color">
+      <label>Pace colour when usage is on pace.</label>
+      <default>#39c5cf</default>
+    </entry>
+
+    <entry name="useCustomTextColor" type="Bool">
+      <label>Use a custom colour for labels, title and countdown.</label>
+      <default>false</default>
+    </entry>
+
+    <entry name="textColor" type="Color">
+      <label>General text colour.</label>
+      <default>#ffffff</default>
+    </entry>
+
+    <entry name="customBackground" type="Bool">
+      <label>Paint a background behind the widget content.</label>
+      <default>false</default>
+    </entry>
+
+    <entry name="backgroundColor" type="Color">
+      <label>Background colour.</label>
+      <default>#000000</default>
+    </entry>
+
+    <entry name="backgroundOpacity" type="Int">
+      <label>Background opacity in percent.</label>
+      <default>60</default>
+      <min>0</min>
+      <max>100</max>
+    </entry>
+  </group>
+</kcfg>

@@ -1,0 +1,21 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Jeff (PentSec)"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "OpenCode Go subscription usage in your panel",
+        "Icon": "speedometer",
+        "Id": "io.github.pentsec.gousage",
+        "License": "MIT",
+        "Name": "OpenCode Go Usage",
+        "Name[es]": "Uso de OpenCode Go",
+        "Description[es]": "Uso de la suscripción de OpenCode Go en el panel",
+        "Version": "0.1.0",
+        "Website": "https://github.com/PentSec/go-usage-widget"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

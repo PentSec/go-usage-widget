@@ -1,0 +1,5 @@
+build/
+__pycache__/
+*.pyc
+*.plasmoid
+node_modules/
