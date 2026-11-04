@@ -351,8 +351,8 @@ PlasmoidItem {
 
     // ------------------------------------------------------------------ full
     fullRepresentation: PlasmaExtras.Representation {
-        Layout.minimumWidth: Kirigami.Units.gridUnit * 16
-        Layout.preferredWidth: Kirigami.Units.gridUnit * 19
+        Layout.minimumWidth: Kirigami.Units.gridUnit * 18
+        Layout.preferredWidth: Kirigami.Units.gridUnit * 21
         Layout.minimumHeight: root.showSettings
             ? Kirigami.Units.gridUnit * 20
             : usageContent.implicitHeight + Kirigami.Units.largeSpacing * 2

@@ -8,9 +8,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- In-widget settings dashboard behind a header icon, split into Display, Colours
-  and Background sections, sharing the configuration with the standard Configure
-  dialog. The header icon turns into a back arrow while it is open.
+- In-widget settings dashboard behind a header icon, with a section list on the
+  left (Display, Colours, Background), sharing the configuration with the
+  standard Configure dialog. The header icon turns into a back arrow while it is
+  open.
 - Token usage curve under the budget rows, one point per day, with 14 day,
   12 week, 12 month and all-time windows, fed by the local OpenCode databases.
   Cache reads are excluded, so the figure counts input, output and reasoning

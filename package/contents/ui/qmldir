@@ -4,6 +4,7 @@ TokenChart 1.0 TokenChart.qml
 ChipBar 1.0 ChipBar.qml
 SettingsCard 1.0 SettingsCard.qml
 SettingsRow 1.0 SettingsRow.qml
+SettingsNav 1.0 SettingsNav.qml
 SettingsPanel 1.0 SettingsPanel.qml
 ToggleSwitch 1.0 ToggleSwitch.qml
 singleton Format 1.0 Format.qml

@@ -39,22 +39,28 @@ ColumnLayout {
 
     onSectionChanged: page.contentY = 0
 
-    ChipBar {
-        Layout.fillWidth: true
-        style: panel.style
-        entries: panel.sections
-        current: panel.section
-
-        onPicked: function(key) {
-            panel.section = key;
-        }
-    }
-
-    Flickable {
-        id: page
-
+    RowLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
+        spacing: Kirigami.Units.smallSpacing
+
+        SettingsNav {
+            Layout.alignment: Qt.AlignTop
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 5
+            style: panel.style
+            entries: panel.sections
+            current: panel.section
+
+            onPicked: function(key) {
+                panel.section = key;
+            }
+        }
+
+        Flickable {
+            id: page
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
 
         clip: true
         contentWidth: width
@@ -71,7 +77,7 @@ ColumnLayout {
 
             SettingsCard {
                 style: panel.style
-                title: i18n("Display")
+                title: ""
                 visible: panel.section === "display"
 
                 SettingsRow {
@@ -133,7 +139,7 @@ ColumnLayout {
 
             SettingsCard {
                 style: panel.style
-                title: i18n("Colours")
+                title: ""
                 visible: panel.section === "colours"
 
                 SettingsRow {
@@ -283,7 +289,7 @@ ColumnLayout {
 
             SettingsCard {
                 style: panel.style
-                title: i18n("Background")
+                title: ""
                 visible: panel.section === "background"
 
                 SettingsRow {
@@ -336,6 +342,7 @@ ColumnLayout {
                     }
                 }
             }
+        }
         }
     }
 }

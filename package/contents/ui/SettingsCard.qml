@@ -24,6 +24,7 @@ ColumnLayout {
 
     Text {
         Layout.leftMargin: 4
+        visible: card.title !== ""
         text: card.title.toUpperCase()
         color: card.style ? card.style.muted : Kirigami.Theme.textColor
         font.pixelSize: 10
