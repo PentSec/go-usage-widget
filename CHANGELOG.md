@@ -8,10 +8,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- Token usage curve under the budget rows, with day, week, month and all-time
-  ranges, fed by the local OpenCode databases. Cache reads are excluded, so the
-  figure counts input, output and reasoning only. Enabled by default and
-  switchable in the settings.
+- Token usage curve under the budget rows, one point per day, with 14 day,
+  12 week, 12 month and all-time windows, fed by the local OpenCode databases.
+  Cache reads are excluded, so the figure counts input, output and reasoning
+  only. Enabled by default and switchable in the settings.
 
 ## [0.1.0] - 2026-11-04
 

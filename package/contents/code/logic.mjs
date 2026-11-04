@@ -201,12 +201,16 @@ export function describeWindow(data, kind, now, options) {
 
 // ---------------------------------------------------------------- token chart
 
-/** Ranges offered by the token chart, with how many buckets each one shows. */
+/**
+ * Ranges offered by the token chart. Every range plots one point per day, so the
+ * hover always steps day by day; the range only picks the window length, in days.
+ * `0` means "since the first recorded session".
+ */
 export const TOKEN_RANGES = [
-    { key: "day", buckets: 14 },
-    { key: "week", buckets: 12 },
-    { key: "month", buckets: 12 },
-    { key: "all", buckets: 0 },
+    { key: "day", days: 14 },
+    { key: "week", days: 84 },
+    { key: "month", days: 365 },
+    { key: "all", days: 0 },
 ];
 
 /** `999`, `1.2K`, `12M`, `5.8B`: compact magnitude for a chart total. */
@@ -279,17 +283,18 @@ function localTodayMs(now) {
 }
 
 /**
- * Bucket the per-day token totals produced by the helper.
+ * Turn the per-day token totals produced by the helper into the points of the
+ * chart. One point per day, always: the range only chooses how many days back to
+ * look, so hovering the curve steps day by day in every range.
  *
  * `days` is `[["YYYY-MM-DD", tokens], ...]` in local time. Returns
- * `{ mode, values, from, to, total, peak }` where `values` always has the number
- * of buckets the range asks for, gaps filled with zero.
+ * `{ mode, values, labels, from, to, total, peak }`. The window never starts
+ * before the first recorded session, so no empty flat stretch is drawn.
  */
 export function tokenBuckets(days, mode, now) {
     const range = TOKEN_RANGES.find((entry) => entry.key === mode) || TOKEN_RANGES[0];
     const totals = {};
     let earliest;
-    let latest;
 
     const list = Array.isArray(days) ? days : [];
     for (let index = 0; index < list.length; ++index) {
@@ -307,51 +312,25 @@ export function tokenBuckets(days, mode, now) {
         if (earliest === undefined || ms < earliest) {
             earliest = ms;
         }
-        if (latest === undefined || ms > latest) {
-            latest = ms;
-        }
     }
 
     const today = localTodayMs(now);
-    let count = range.buckets;
-    let startMs;
-    let bucketOf;
-
-    if (mode === "day") {
-        startMs = today - (count - 1) * DAY_MS;
-        bucketOf = (ms) => Math.floor((ms - startMs) / DAY_MS);
-    } else if (mode === "week") {
-        const weekday = (new Date(today).getUTCDay() + 6) % 7;
-        const mondayThisWeek = today - weekday * DAY_MS;
-        startMs = mondayThisWeek - (count - 1) * 7 * DAY_MS;
-        bucketOf = (ms) => Math.floor((ms - startMs) / (7 * DAY_MS));
-    } else if (mode === "month") {
-        startMs = addMonths(monthStartMs(today), -(count - 1));
-        bucketOf = (ms) => monthDistance(startMs, monthStartMs(ms));
-    } else {
-        const first = earliest === undefined ? monthStartMs(today) : monthStartMs(earliest);
-        const lastMonth = monthStartMs(latest === undefined ? today : latest);
-        count = Math.max(1, monthDistance(first, lastMonth) + 1);
-        startMs = first;
-        bucketOf = (ms) => monthDistance(startMs, monthStartMs(ms));
+    let startMs = range.days > 0 ? today - (range.days - 1) * DAY_MS : today;
+    if (range.days > 0 && earliest !== undefined && startMs < earliest) {
+        startMs = earliest;
+    } else if (range.days === 0 && earliest !== undefined) {
+        startMs = earliest;
     }
 
+    const count = Math.max(1, Math.round((today - startMs) / DAY_MS) + 1);
     const values = [];
     const labels = [];
-    for (let index = 0; index < count; ++index) {
-        values.push(0);
-        labels.push(dayKeyFromMs(
-            mode === "month" || mode === "all"
-                ? addMonths(startMs, index)
-                : startMs + index * (mode === "week" ? 7 : 1) * DAY_MS));
-    }
 
-    Object.keys(totals).forEach((key) => {
-        const index = bucketOf(parseDayKey(key));
-        if (index >= 0 && index < values.length) {
-            values[index] += totals[key];
-        }
-    });
+    for (let index = 0; index < count; ++index) {
+        const key = dayKeyFromMs(startMs + index * DAY_MS);
+        labels.push(key);
+        values.push(totals[key] || 0);
+    }
 
     let total = 0;
     let peak = 0;
@@ -362,19 +341,13 @@ export function tokenBuckets(days, mode, now) {
         }
     }
 
-    const monthly = mode === "month" || mode === "all";
-    const endMs = monthly
-        ? addMonths(startMs, count) - DAY_MS
-        : startMs + count * (mode === "week" ? 7 : 1) * DAY_MS - DAY_MS;
-
     return {
         mode: range.key,
         values: values,
         labels: labels,
         from: dayKeyFromMs(startMs),
-        to: dayKeyFromMs(endMs),
+        to: dayKeyFromMs(today),
         total: total,
         peak: peak,
     };
 }
-

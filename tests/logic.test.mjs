@@ -286,59 +286,61 @@ test("tokenBuckets day range fills gaps and clips old data", () => {
     assert.equal(buckets.labels[13], "2026-11-15");
 });
 
-test("tokenBuckets week range starts on Monday", () => {
-    // 2026-11-15 is a Sunday, so the current week starts on 2026-11-09.
+test("tokenBuckets week range plots 84 daily points", () => {
     const now = new Date(2026, 10, 15, 12, 0, 0).getTime();
     const days = [
+        ["2026-08-01", 1],
+        ["2026-11-08", 99],
         ["2026-11-09", 10],
         ["2026-11-11", 20],
-        ["2026-11-08", 99],
     ];
     const buckets = tokenBuckets(days, "week", now);
 
-    assert.equal(buckets.values.length, 12);
-    assert.equal(buckets.values[11], 30);
-    assert.equal(buckets.values[10], 99);
-    assert.equal(buckets.total, 129);
+    assert.equal(buckets.values.length, 84);
     assert.equal(buckets.from, "2026-08-24");
     assert.equal(buckets.to, "2026-11-15");
-    assert.equal(buckets.labels[0], "2026-08-24");
-    assert.equal(buckets.labels[11], "2026-11-09");
+    assert.equal(buckets.labels[buckets.labels.length - 1], "2026-11-15");
+
+    // Every point is one day: hovering steps day by day, never week by week.
+    const at = (key) => buckets.labels.indexOf(key);
+    assert.equal(buckets.values[at("2026-11-08")], 99);
+    assert.equal(buckets.values[at("2026-11-09")], 10);
+    assert.equal(buckets.values[at("2026-11-11")], 20);
+    // 2026-08-01 is outside the 84 day window and must not be counted.
+    assert.equal(buckets.total, 129);
 });
 
-test("tokenBuckets month range groups by calendar month", () => {
+test("tokenBuckets month range clamps to the first recorded day", () => {
     const now = new Date(2026, 10, 15, 12, 0, 0).getTime();
     const days = [
-        ["2026-11-01", 5],
-        ["2026-11-30", 7],
         ["2026-05-16", 1000],
+        ["2026-11-15", 5],
     ];
     const buckets = tokenBuckets(days, "month", now);
 
-    assert.equal(buckets.values.length, 12);
-    assert.equal(buckets.values[11], 12);
-    assert.equal(buckets.values[5], 1000);
-    assert.equal(buckets.from, "2025-12-01");
-    assert.equal(buckets.to, "2026-11-30");
-    assert.equal(buckets.labels[0], "2025-12-01");
-    assert.equal(buckets.labels[11], "2026-11-01");
+    assert.equal(buckets.from, "2026-05-16");
+    assert.equal(buckets.to, "2026-11-15");
+    assert.equal(buckets.values.length, 184);
+    assert.equal(buckets.values[0], 1000);
+    assert.equal(buckets.values[183], 5);
+    assert.equal(buckets.total, 1005);
 });
 
-test("tokenBuckets all range spans the whole history", () => {
+test("tokenBuckets all range starts at the first recorded day", () => {
     const now = new Date(2026, 10, 15, 12, 0, 0).getTime();
     const days = [
         ["2026-05-16", 248064],
-        ["2026-07-01", 1000],
         ["2026-10-15", 52920820],
     ];
     const buckets = tokenBuckets(days, "all", now);
 
-    assert.equal(buckets.values.length, 6);
-    assert.equal(buckets.values[0], 248064);
-    assert.equal(buckets.values[2], 1000);
-    assert.equal(buckets.values[5], 52920820);
-    assert.equal(buckets.from, "2026-05-01");
-    assert.equal(buckets.to, "2026-10-31");
+    assert.equal(buckets.mode, "all");
+    assert.equal(buckets.from, "2026-05-16");
+    assert.equal(buckets.to, "2026-11-15");
+    assert.equal(buckets.values.length, 184);
+    assert.equal(buckets.total, 53168884);
+    assert.equal(buckets.values[buckets.labels.indexOf("2026-10-15")], 52920820);
+    assert.equal(buckets.peak, 52920820);
 });
 
 test("tokenBuckets tolerates missing and malformed data", () => {

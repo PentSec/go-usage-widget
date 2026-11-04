@@ -70,8 +70,10 @@ redirected somewhere else.
 ## Token chart
 
 Below the budget rows the popup draws a smooth curve of the tokens you have
-used, with `Day`, `Week`, `Month` and `All` ranges. Hovering a point shows its
-value and date in the header. It reads only your local
+used. Every range plots **one point per day**, so moving along the curve steps
+day by day; the range only picks the window: 14 days, 12 weeks, 12 months or the
+whole history. The window never starts before your first recorded session, and
+hovering a point shows its value and date in the header. It reads only your local
 `opencode.db`, aggregating `session_message` when that table exists and falling
 back to the older `message` table otherwise.
 
