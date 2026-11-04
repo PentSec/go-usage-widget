@@ -144,39 +144,6 @@ PlasmoidItem {
         return i18n("Unexpected response");
     }
 
-    function windowLine(label, described) {
-        var line = label + "  " + described.clamped + "%";
-        var pace = Format.paceText(described.pace);
-        if (pace) {
-            line += "  " + pace;
-        }
-        var countdown = Format.countdownText(described.countdown);
-        if (countdown) {
-            line += "  ↻ " + countdown;
-        }
-        return line;
-    }
-
-    function tooltipText() {
-        if (phase === "error") {
-            // The mapped message is for humans; the raw code is for bug reports.
-            return errorCode ? errorLabel() + "\n" + errorCode : errorLabel();
-        }
-        if (!usage) {
-            return i18n("Loading…");
-        }
-
-        var lines = [];
-        for (var index = 0; index < Logic.WINDOWS.length; ++index) {
-            var window = Logic.WINDOWS[index];
-            lines.push(windowLine(window.label, Logic.describeWindow(usage[window.key], window.key, now, {
-                showPace: showPace,
-                showCountdown: showCountdown
-            })));
-        }
-        return lines.join("\n");
-    }
-
     // --------------------------------------------------------------- source
     P5Support.DataSource {
         id: usageSource
@@ -298,7 +265,7 @@ PlasmoidItem {
     }
 
     // --------------------------------------------------------------- compact
-    compactRepresentation: PlasmaCore.ToolTipArea {
+    compactRepresentation: Item {
         id: compact
 
         implicitWidth: chips.implicitWidth + Kirigami.Units.smallSpacing * 2
@@ -307,9 +274,9 @@ PlasmoidItem {
         Layout.preferredWidth: implicitWidth
         Layout.minimumHeight: implicitHeight
 
-        mainText: i18n("OpenCode Go Usage")
-        subText: root.tooltipText()
-        textFormat: Text.PlainText
+        Accessible.role: Accessible.Button
+        Accessible.name: i18n("OpenCode Go Usage")
+        Accessible.description: i18n("Shows the OpenCode Go usage breakdown")
 
         TapHandler {
             onTapped: root.expanded = !root.expanded

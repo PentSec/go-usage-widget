@@ -12,8 +12,7 @@ the three budget windows: **5 hours**, **7 days** and **1 calendar month**.
 - Three windows with label, bar, percentage, pace and reset countdown.
 - Pace compares your usage with the elapsed share of the window and reports
   `+Npp` (reserve), `-Npp` (deficit) or `on pace`.
-- Compact panel representation: one chip per window, coloured by severity, with
-  the full breakdown in the tooltip.
+- Compact panel representation: one chip per window, coloured by severity.
 - Token usage curve under the budget rows, grouped by day, week, month or all
   time, read from your local OpenCode databases.
 - Full popup with the complete row layout and a refresh button.

@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The panel chip no longer shows a text tooltip with the full breakdown; the
+  popup already covers it.
+
 ### Added
 
 - In-widget settings dashboard behind a header icon, with a section list on the
