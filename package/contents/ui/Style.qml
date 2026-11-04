@@ -46,6 +46,19 @@ QtObject {
     readonly property color muted: Qt.rgba(text.r, text.g, text.b, 0.62)
     readonly property color track: Qt.rgba(text.r, text.g, text.b, 0.15)
 
+    // Derived accents are computed here, guarded, so no view has to destructure
+    // a possibly still-unresolved theme colour inside its own binding.
+    function withAlpha(color, alpha) {
+        if (!color || color.r === undefined) {
+            return "transparent";
+        }
+        return Qt.rgba(color.r, color.g, color.b, alpha);
+    }
+
+    readonly property color accentTint: withAlpha(themeAccent, 0.24)
+    readonly property color accentSoft: withAlpha(themeAccent, 0.45)
+    readonly property color accentStrong: withAlpha(themeAccent, 0.9)
+
     // ------------------------------------------------------------- background
     readonly property bool showBackground: settings.customBackground === true
     readonly property color backgroundColor: settings.backgroundColor !== undefined

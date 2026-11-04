@@ -54,6 +54,35 @@ ERROR_UNEXPECTED = "unexpected_response"
 ERROR_HTTP = "http_error"
 ERROR_UNEXPECTED_INTERNAL = "unexpected_error"
 
+TOKENS_FLAG = "--tokens"
+
+# Cache reads are deliberately excluded: they are the same context re-sent to
+# the model, and on a real machine they are about 95% of the raw sum. The chart
+# counts work tokens, input + output + reasoning. Note that the legacy
+# `message.tokens.total` DOES include cache, which is why it is never used.
+TOKENS_QUERY_SESSION_MESSAGE = """
+select date(time_created / 1000, 'unixepoch', 'localtime') as day,
+       sum(coalesce(json_extract(data, '$.tokens.input'), 0)
+         + coalesce(json_extract(data, '$.tokens.output'), 0)
+         + coalesce(json_extract(data, '$.tokens.reasoning'), 0)) as tokens
+from session_message
+where type = 'assistant' and json_extract(data, '$.tokens') is not null
+group by day
+order by day
+"""
+
+# Older OpenCode builds only have the `message` table.
+TOKENS_QUERY_MESSAGE = """
+select date(time_created / 1000, 'unixepoch', 'localtime') as day,
+       sum(coalesce(json_extract(data, '$.tokens.input'), 0)
+         + coalesce(json_extract(data, '$.tokens.output'), 0)
+         + coalesce(json_extract(data, '$.tokens.reasoning'), 0)) as tokens
+from message
+where json_extract(data, '$.role') = 'assistant'
+group by day
+order by day
+"""
+
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     """Refuse every redirect.
@@ -325,11 +354,64 @@ def collect(deadline: float) -> dict[str, object]:
     return {"error": {"code": ERROR_NO_CREDENTIAL}}
 
 
+def token_days() -> list[list[object]]:
+    """Per-day assistant token totals across every OpenCode database, merged.
+
+    Only aggregates leave this process: no prompt, no title, no session id.
+    """
+    totals: dict[str, int] = {}
+
+    for base in data_dirs():
+        database = base / "opencode.db"
+        if not database.is_file():
+            continue
+
+        uri = "file:" + urllib.parse.quote(str(database), safe="/") + "?mode=ro"
+        try:
+            connection = sqlite3.connect(uri, uri=True, timeout=2.0)
+        except sqlite3.Error:
+            continue
+
+        try:
+            tables = {
+                row[0]
+                for row in connection.execute(
+                    "select name from sqlite_master where type = 'table'"
+                ).fetchall()
+            }
+            query = (
+                TOKENS_QUERY_SESSION_MESSAGE
+                if "session_message" in tables
+                else TOKENS_QUERY_MESSAGE
+            )
+            rows = connection.execute(query).fetchall()
+        except sqlite3.Error:
+            continue
+        finally:
+            connection.close()
+
+        for day, tokens in rows:
+            if not isinstance(day, str) or tokens is None:
+                continue
+            totals[day] = totals.get(day, 0) + int(tokens)
+
+    return [[day, totals[day]] for day in sorted(totals)]
+
+
+def tokens_result() -> dict[str, object]:
+    try:
+        return {"ok": {"days": token_days()}}
+    except Exception:  # noqa: BLE001 - never leak a traceback to the widget
+        return {"error": {"code": ERROR_UNEXPECTED_INTERNAL}}
+
+
 def main(argv: list[str]) -> int:
-    del argv  # no arguments: the endpoint and the resolution order are fixed
     deadline = time.monotonic() + CYCLE_BUDGET_S
     try:
-        result = collect(deadline)
+        if argv and argv[0] == TOKENS_FLAG:
+            result = tokens_result()
+        else:
+            result = collect(deadline)
     except Exception:  # noqa: BLE001 - never leak a traceback to the widget
         result = {"error": {"code": ERROR_UNEXPECTED_INTERNAL}}
 

@@ -8,6 +8,7 @@ Run with: python3 -m unittest discover -s tests
 
 from __future__ import annotations
 
+import datetime
 import importlib.util
 import json
 import os
@@ -445,6 +446,182 @@ class CollectTests(unittest.TestCase):
             usage.sys, "stdout"
         ) as stdout:
             self.assertEqual(usage.main([]), 0)
+        written = "".join(call.args[0] for call in stdout.write.call_args_list)
+        self.assertEqual(json.loads(written), {"error": {"code": "unexpected_error"}})
+
+
+class TokenSeriesTests(unittest.TestCase):
+    """`--tokens` reads only aggregates from the local databases."""
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.base = self.root / "opencode"
+        self.base.mkdir()
+
+    def make_session_messages(self, base: Path, rows: list[tuple[int, str, int, int, int]]) -> None:
+        connection = sqlite3.connect(base / "opencode.db")
+        connection.execute(
+            "create table session_message (id text, session_id text, type text, seq integer, "
+            "time_created integer, time_updated integer, data text)"
+        )
+        for index, (timestamp, kind, prompt, completion, reasoning) in enumerate(rows):
+            data = json.dumps(
+                {"tokens": {"input": prompt, "output": completion, "reasoning": reasoning,
+                            "cache": {"read": 999999, "write": 0}}}
+            )
+            connection.execute(
+                "insert into session_message values (?, ?, ?, ?, ?, ?, ?)",
+                (f"m{index}", "session", kind, index, timestamp, timestamp, data),
+            )
+        connection.commit()
+        connection.close()
+
+    def make_legacy_messages(self, base: Path, rows: list[tuple[int, str, int]]) -> None:
+        connection = sqlite3.connect(base / "opencode.db")
+        connection.execute(
+            "create table message (id text, session_id text, "
+            "time_created integer, time_updated integer, data text)"
+        )
+        for index, (timestamp, role, total) in enumerate(rows):
+            data = json.dumps(
+                {"role": role, "tokens": {"total": total, "input": 10, "output": 5,
+                                          "reasoning": 0, "cache": {"read": total}}}
+            )
+            connection.execute(
+                "insert into message values (?, ?, ?, ?, ?)",
+                (f"m{index}", "session", timestamp, timestamp, data),
+            )
+        connection.commit()
+        connection.close()
+
+    def local_day(self, timestamp_ms: int) -> str:
+        return datetime.date.fromtimestamp(timestamp_ms / 1000).isoformat()
+
+    def test_sums_assistant_work_tokens_per_local_day(self) -> None:
+        noon = int(datetime.datetime(2026, 5, 16, 12, 0).timestamp() * 1000)
+        next_noon = int(datetime.datetime(2026, 5, 17, 12, 0).timestamp() * 1000)
+
+        self.make_session_messages(
+            self.base,
+            [
+                (noon, "assistant", 100, 50, 5),
+                (noon + 1000, "assistant", 1, 1, 1),
+                (next_noon, "assistant", 7, 0, 0),
+                (noon, "user", 999, 999, 999),
+            ],
+        )
+
+        with mock.patch.object(usage, "data_dirs", return_value=iter([self.base])):
+            days = usage.token_days()
+
+        self.assertEqual(
+            days,
+            [
+                [self.local_day(noon), 158],
+                [self.local_day(next_noon), 7],
+            ],
+        )
+
+    def test_cache_reads_are_excluded(self) -> None:
+        noon = int(datetime.datetime(2026, 5, 16, 12, 0).timestamp() * 1000)
+        self.make_session_messages(self.base, [(noon, "assistant", 100, 20, 0)])
+
+        with mock.patch.object(usage, "data_dirs", return_value=iter([self.base])):
+            days = usage.token_days()
+
+        self.assertEqual(days, [[self.local_day(noon), 120]])
+
+    def test_session_message_wins_over_the_legacy_table(self) -> None:
+        noon = int(datetime.datetime(2026, 5, 16, 12, 0).timestamp() * 1000)
+        self.make_session_messages(self.base, [(noon, "assistant", 100, 0, 0)])
+
+        connection = sqlite3.connect(self.base / "opencode.db")
+        connection.execute(
+            "create table message (id text, session_id text, "
+            "time_created integer, time_updated integer, data text)"
+        )
+        connection.execute(
+            "insert into message values ('x', 'session', ?, ?, ?)",
+            (noon, noon, json.dumps({"role": "assistant", "tokens": {"total": 999999}})),
+        )
+        connection.commit()
+        connection.close()
+
+        with mock.patch.object(usage, "data_dirs", return_value=iter([self.base])):
+            days = usage.token_days()
+
+        self.assertEqual(days, [[self.local_day(noon), 100]])
+
+    def test_legacy_table_is_used_when_session_message_is_absent(self) -> None:
+        noon = int(datetime.datetime(2026, 5, 16, 12, 0).timestamp() * 1000)
+        self.make_legacy_messages(self.base, [(noon, "assistant", 500000), (noon, "user", 7)])
+
+        with mock.patch.object(usage, "data_dirs", return_value=iter([self.base])):
+            days = usage.token_days()
+
+        # input(10) + output(5) + reasoning(0); `tokens.total` includes cache.
+        self.assertEqual(days, [[self.local_day(noon), 15]])
+
+    def test_merges_every_database_and_sorts_by_day(self) -> None:
+        second = self.root / "other" / "opencode"
+        second.mkdir(parents=True)
+        day_one = int(datetime.datetime(2026, 5, 16, 9, 0).timestamp() * 1000)
+        day_two = int(datetime.datetime(2026, 5, 17, 9, 0).timestamp() * 1000)
+
+        self.make_session_messages(self.base, [(day_two, "assistant", 20, 0, 0)])
+        self.make_session_messages(second, [(day_one, "assistant", 5, 0, 0),
+                                            (day_two, "assistant", 30, 0, 0)])
+
+        with mock.patch.object(usage, "data_dirs", return_value=iter([self.base, second])):
+            days = usage.token_days()
+
+        self.assertEqual(
+            days,
+            [
+                [self.local_day(day_one), 5],
+                [self.local_day(day_two), 50],
+            ],
+        )
+
+    def test_database_without_a_known_table_is_skipped(self) -> None:
+        connection = sqlite3.connect(self.base / "opencode.db")
+        connection.execute("create table other (x text)")
+        connection.commit()
+        connection.close()
+
+        with mock.patch.object(usage, "data_dirs", return_value=iter([self.base])):
+            self.assertEqual(usage.token_days(), [])
+
+    def test_missing_database_returns_an_empty_series(self) -> None:
+        with mock.patch.object(usage, "data_dirs", return_value=iter([self.root / "absent"])):
+            self.assertEqual(usage.token_days(), [])
+
+    def test_tokens_mode_never_touches_the_network(self) -> None:
+        noon = int(datetime.datetime(2026, 5, 16, 12, 0).timestamp() * 1000)
+        self.make_session_messages(self.base, [(noon, "assistant", 42, 0, 0)])
+
+        def forbidden(*args: object, **kwargs: object):
+            raise AssertionError("tokens mode must not probe")
+
+        with mock.patch.object(usage, "data_dirs", return_value=iter([self.base])), mock.patch.object(
+            usage, "probe", side_effect=forbidden
+        ), mock.patch.object(usage, "collect", side_effect=forbidden), mock.patch.object(
+            usage.sys, "stdout"
+        ) as stdout:
+            self.assertEqual(usage.main(["--tokens"]), 0)
+
+        written = "".join(call.args[0] for call in stdout.write.call_args_list)
+        payload = json.loads(written)
+        self.assertEqual(payload, {"ok": {"days": [[self.local_day(noon), 42]]}})
+
+    def test_tokens_mode_reports_an_internal_error_without_a_traceback(self) -> None:
+        with mock.patch.object(usage, "token_days", side_effect=RuntimeError("boom")), mock.patch.object(
+            usage.sys, "stdout"
+        ) as stdout:
+            self.assertEqual(usage.main(["--tokens"]), 0)
+
         written = "".join(call.args[0] for call in stdout.write.call_args_list)
         self.assertEqual(json.loads(written), {"error": {"code": "unexpected_error"}})
 

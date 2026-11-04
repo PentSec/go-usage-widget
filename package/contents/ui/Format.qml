@@ -43,4 +43,31 @@ QtObject {
         }
         return Logic.formatPaceDelta(pace);
     }
+
+    /// Short label for a token-chart range.
+    function rangeLabel(key) {
+        switch (key) {
+        case "week":
+            return i18n("Week");
+        case "month":
+            return i18n("Month");
+        case "all":
+            return i18n("All");
+        default:
+            return i18n("Day");
+        }
+    }
+
+    /// `2026-11-15` -> a short local date, without re-parsing it as UTC.
+    function shortDate(key) {
+        if (!key) {
+            return "";
+        }
+        var parts = String(key).split("-");
+        if (parts.length !== 3) {
+            return key;
+        }
+        var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        return Qt.formatDate(date, "d MMM");
+    }
 }

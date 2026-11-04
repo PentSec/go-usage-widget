@@ -198,3 +198,177 @@ export function describeWindow(data, kind, now, options) {
         countdown: opts.showCountdown === false ? { kind: "hidden" } : countdown(resetsAt, now),
     };
 }
+
+// ---------------------------------------------------------------- token chart
+
+/** Ranges offered by the token chart, with how many buckets each one shows. */
+export const TOKEN_RANGES = [
+    { key: "day", buckets: 14 },
+    { key: "week", buckets: 12 },
+    { key: "month", buckets: 12 },
+    { key: "all", buckets: 0 },
+];
+
+/** `999`, `1.2K`, `12M`, `5.8B`: compact magnitude for a chart total. */
+export function compactNumber(value) {
+    const number = Math.max(0, Math.round(typeof value === "number" && isFinite(value) ? value : 0));
+    if (number < 1000) {
+        return String(number);
+    }
+    const units = [
+        [1e12, "T"],
+        [1e9, "B"],
+        [1e6, "M"],
+        [1e3, "K"],
+    ];
+    for (let index = 0; index < units.length; ++index) {
+        const size = units[index][0];
+        if (number < size) {
+            continue;
+        }
+        const scaled = number / size;
+        const text = scaled >= 100 ? scaled.toFixed(0) : scaled.toFixed(1);
+        return text + units[index][1];
+    }
+    return String(number);
+}
+
+function pad2(value) {
+    return value < 10 ? "0" + value : String(value);
+}
+
+/** `YYYY-MM-DD` -> UTC midnight, so day arithmetic never crosses a DST edge. */
+function parseDayKey(key) {
+    const parts = String(key).split("-");
+    if (parts.length !== 3) {
+        return undefined;
+    }
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+    if (!isFinite(year) || !isFinite(month) || !isFinite(day)) {
+        return undefined;
+    }
+    return Date.UTC(year, month - 1, day);
+}
+
+function dayKeyFromMs(ms) {
+    const date = new Date(ms);
+    return date.getUTCFullYear() + "-" + pad2(date.getUTCMonth() + 1) + "-" + pad2(date.getUTCDate());
+}
+
+function monthStartMs(ms) {
+    const date = new Date(ms);
+    return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1);
+}
+
+function addMonths(ms, months) {
+    const date = new Date(ms);
+    return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1);
+}
+
+function monthDistance(fromMs, toMs) {
+    const from = new Date(fromMs);
+    const to = new Date(toMs);
+    return (to.getUTCFullYear() - from.getUTCFullYear()) * 12 + (to.getUTCMonth() - from.getUTCMonth());
+}
+
+function localTodayMs(now) {
+    const date = new Date(now);
+    return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/**
+ * Bucket the per-day token totals produced by the helper.
+ *
+ * `days` is `[["YYYY-MM-DD", tokens], ...]` in local time. Returns
+ * `{ mode, values, from, to, total, peak }` where `values` always has the number
+ * of buckets the range asks for, gaps filled with zero.
+ */
+export function tokenBuckets(days, mode, now) {
+    const range = TOKEN_RANGES.find((entry) => entry.key === mode) || TOKEN_RANGES[0];
+    const totals = {};
+    let earliest;
+    let latest;
+
+    const list = Array.isArray(days) ? days : [];
+    for (let index = 0; index < list.length; ++index) {
+        const entry = list[index];
+        if (!Array.isArray(entry) || entry.length < 2) {
+            continue;
+        }
+        const key = String(entry[0]);
+        const value = Number(entry[1]);
+        if (!isFinite(value) || parseDayKey(key) === undefined) {
+            continue;
+        }
+        totals[key] = (totals[key] || 0) + Math.max(0, Math.round(value));
+        const ms = parseDayKey(key);
+        if (earliest === undefined || ms < earliest) {
+            earliest = ms;
+        }
+        if (latest === undefined || ms > latest) {
+            latest = ms;
+        }
+    }
+
+    const today = localTodayMs(now);
+    let count = range.buckets;
+    let startMs;
+    let bucketOf;
+
+    if (mode === "day") {
+        startMs = today - (count - 1) * DAY_MS;
+        bucketOf = (ms) => Math.floor((ms - startMs) / DAY_MS);
+    } else if (mode === "week") {
+        const weekday = (new Date(today).getUTCDay() + 6) % 7;
+        const mondayThisWeek = today - weekday * DAY_MS;
+        startMs = mondayThisWeek - (count - 1) * 7 * DAY_MS;
+        bucketOf = (ms) => Math.floor((ms - startMs) / (7 * DAY_MS));
+    } else if (mode === "month") {
+        startMs = addMonths(monthStartMs(today), -(count - 1));
+        bucketOf = (ms) => monthDistance(startMs, monthStartMs(ms));
+    } else {
+        const first = earliest === undefined ? monthStartMs(today) : monthStartMs(earliest);
+        const lastMonth = monthStartMs(latest === undefined ? today : latest);
+        count = Math.max(1, monthDistance(first, lastMonth) + 1);
+        startMs = first;
+        bucketOf = (ms) => monthDistance(startMs, monthStartMs(ms));
+    }
+
+    const values = [];
+    for (let index = 0; index < count; ++index) {
+        values.push(0);
+    }
+
+    Object.keys(totals).forEach((key) => {
+        const index = bucketOf(parseDayKey(key));
+        if (index >= 0 && index < values.length) {
+            values[index] += totals[key];
+        }
+    });
+
+    let total = 0;
+    let peak = 0;
+    for (let index = 0; index < values.length; ++index) {
+        total += values[index];
+        if (values[index] > peak) {
+            peak = values[index];
+        }
+    }
+
+    const monthly = mode === "month" || mode === "all";
+    const endMs = monthly
+        ? addMonths(startMs, count) - DAY_MS
+        : startMs + count * (mode === "week" ? 7 : 1) * DAY_MS - DAY_MS;
+
+    return {
+        mode: range.key,
+        values: values,
+        from: dayKeyFromMs(startMs),
+        to: dayKeyFromMs(endMs),
+        total: total,
+        peak: peak,
+    };
+}
+

@@ -1,3 +1,4 @@
 Style 1.0 Style.qml
 UsageRow 1.0 UsageRow.qml
+TokenChart 1.0 TokenChart.qml
 singleton Format 1.0 Format.qml

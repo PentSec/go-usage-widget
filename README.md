@@ -14,6 +14,8 @@ the three budget windows: **5 hours**, **7 days** and **1 calendar month**.
   `+Npp` (reserve), `-Npp` (deficit) or `on pace`.
 - Compact panel representation: one chip per window, coloured by severity, with
   the full breakdown in the tooltip.
+- Token usage chart under the budget rows, grouped by day, week, month or all
+  time, read from your local OpenCode databases.
 - Full popup with the complete row layout and a refresh button.
 - Everything follows your Plasma theme, colour scheme and accent colour. No
   hardcoded colours.
@@ -54,6 +56,7 @@ make uninstall
 | Pace colours | theme | Reserve, deficit and on pace. |
 | General text colour | theme | Labels, title and countdown. |
 | Background | off | Optional colour and opacity painted behind the content. |
+| Token chart | on | Chart of tokens used, fed by the local OpenCode databases. |
 
 Every colour group has its own **Custom** switch. While a group follows the
 theme it tracks your Plasma colour scheme and accent colour; the moment you turn
@@ -63,6 +66,25 @@ so the native popup frame stays intact.
 There is deliberately **no endpoint setting**. The request always goes to the
 fixed origin `https://opencode.ai/zen/go/v1/usage`, so a credential can never be
 redirected somewhere else.
+
+## Token chart
+
+Below the budget rows the popup draws a small bar chart of the tokens you have
+used, with `Day`, `Week`, `Month` and `All` ranges. It reads only your local
+`opencode.db`, aggregating `session_message` when that table exists and falling
+back to the older `message` table otherwise.
+
+Two deliberate details:
+
+- **Cache reads are excluded.** On a real machine they are around 95% of the raw
+  sum, because they are the same context re-sent to the model. The chart counts
+  work tokens: input plus output plus reasoning.
+- **It is local, not server side.** The subscription endpoint reports
+  percentages, not tokens, so the chart shows what your machine recorded, not
+  what the service billed. Neither the chart nor its query ever touches the
+  network.
+
+The chart is refreshed when you open the popup, at most once every five minutes.
 
 ## How it works
 

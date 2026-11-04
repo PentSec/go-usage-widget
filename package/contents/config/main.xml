@@ -23,6 +23,22 @@
       <default>true</default>
     </entry>
 
+    <entry name="showChart" type="Bool">
+      <label>Show the token usage chart under the budget rows.</label>
+      <default>true</default>
+    </entry>
+
+    <entry name="chartRange" type="Enum">
+      <label>Default range of the token chart.</label>
+      <choices>
+        <choice name="day" />
+        <choice name="week" />
+        <choice name="month" />
+        <choice name="all" />
+      </choices>
+      <default>day</default>
+    </entry>
+
     <entry name="useCustomBarColors" type="Bool">
       <label>Use custom colours for the bar fill.</label>
       <default>false</default>

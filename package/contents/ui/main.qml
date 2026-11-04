@@ -26,6 +26,8 @@ PlasmoidItem {
     readonly property int pollIntervalSeconds: Math.max(30, plasmoid.configuration.pollInterval || 60)
     readonly property bool showPace: plasmoid.configuration.showPace !== false
     readonly property bool showCountdown: plasmoid.configuration.showCountdown !== false
+    readonly property bool showChart: plasmoid.configuration.showChart !== false
+    readonly property string chartRange: plasmoid.configuration.chartRange || "day"
 
     // ---------------------------------------------------------------- state
     property string phase: "loading"
@@ -35,6 +37,13 @@ PlasmoidItem {
     property bool busy: false
     property double now: Date.now()
     property double lastUpdated: 0
+
+    property var tokenDays: null
+    property double tokensUpdated: 0
+    property bool tokensBusy: false
+    property string tokensError: ""
+
+    readonly property var tokenBuckets: Logic.tokenBuckets(tokenDays, chartRange, now)
 
     readonly property bool vertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical
 
@@ -55,6 +64,24 @@ PlasmoidItem {
         busy = true;
         watchdog.restart();
         usageSource.connectSource("python3 " + shellQuote(helperPath));
+    }
+
+    function refreshTokens() {
+        if (tokensBusy) {
+            return;
+        }
+        tokensBusy = true;
+        tokensWatchdog.restart();
+        tokensSource.connectSource("python3 " + shellQuote(helperPath) + " --tokens");
+    }
+
+    onExpandedChanged: function(isExpanded) {
+        if (!isExpanded || !showChart) {
+            return;
+        }
+        if (tokenDays === null || Date.now() - tokensUpdated > 300000) {
+            refreshTokens();
+        }
     }
 
     function fail(code, status) {
@@ -196,6 +223,57 @@ PlasmoidItem {
         }
     }
 
+    P5Support.DataSource {
+        id: tokensSource
+
+        engine: "executable"
+        connectedSources: []
+
+        onNewData: function(sourceName, data) {
+            if (data["exit code"] === undefined) {
+                return;
+            }
+
+            tokensWatchdog.stop();
+            tokensSource.disconnectSource(sourceName);
+            root.tokensBusy = false;
+
+            var stdout = data["stdout"] || "";
+            if (data["exit code"] !== 0 || stdout.length === 0) {
+                root.tokensError = "os_error";
+                return;
+            }
+
+            try {
+                var payload = JSON.parse(stdout);
+                if (payload && payload.ok && Array.isArray(payload.ok.days)) {
+                    root.tokenDays = payload.ok.days;
+                    root.tokensUpdated = Date.now();
+                    root.tokensError = "";
+                } else {
+                    root.tokensError = "unexpected_response";
+                }
+            } catch (parseError) {
+                root.tokensError = "unexpected_response";
+            }
+        }
+    }
+
+    Timer {
+        id: tokensWatchdog
+
+        interval: 30000
+        repeat: false
+
+        onTriggered: {
+            if (!root.tokensBusy) {
+                return;
+            }
+            root.tokensBusy = false;
+            root.tokensError = "request_timed_out";
+        }
+    }
+
     Timer {
         interval: root.pollIntervalSeconds * 1000
         running: true
@@ -333,6 +411,22 @@ PlasmoidItem {
                             showPace: root.showPace
                             showCountdown: root.showCountdown
                         }
+                    }
+                }
+
+                TokenChart {
+                    visible: root.showChart && root.phase === "ready"
+
+                    style: tokens
+                    Layout.fillWidth: true
+                    Layout.topMargin: Kirigami.Units.smallSpacing
+                    buckets: root.tokenBuckets
+                    range: root.chartRange
+                    busy: root.tokensBusy
+                    errorCode: root.tokensError
+
+                    onRangePicked: function(mode) {
+                        plasmoid.configuration.chartRange = mode;
                     }
                 }
 

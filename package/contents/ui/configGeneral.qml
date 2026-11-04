@@ -12,6 +12,7 @@ Kirigami.FormLayout {
     property alias cfg_pollInterval: intervalSpin.value
     property alias cfg_showPace: paceCheck.checked
     property alias cfg_showCountdown: countdownCheck.checked
+    property alias cfg_showChart: chartCheck.checked
 
     property alias cfg_useCustomBarColors: barColorsCheck.checked
     property alias cfg_barOkColor: barOk.color
@@ -57,6 +58,12 @@ Kirigami.FormLayout {
         id: countdownCheck
 
         text: i18n("Show countdown to reset")
+    }
+
+    QQC2.CheckBox {
+        id: chartCheck
+
+        text: i18n("Show token usage chart under the budget rows")
     }
 
     // --------------------------------------------------------------- colours

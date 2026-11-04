@@ -8,6 +8,7 @@ import {
     BAR_CELLS,
     WINDOWS,
     bar,
+    compactNumber,
     clampPercent,
     countdown,
     describeWindow,
@@ -17,6 +18,7 @@ import {
     monthlyStartMs,
     paceOf,
     severity,
+    tokenBuckets,
 } from "../package/contents/code/logic.mjs";
 
 const HOUR = 3_600_000;
@@ -247,4 +249,106 @@ test("describeWindow can hide pace and countdown", () => {
     );
     assert.equal(described.pace, undefined);
     assert.deepEqual(described.countdown, { kind: "hidden" });
+});
+
+test("compactNumber keeps small values exact and abbreviates large ones", () => {
+    assert.equal(compactNumber(0), "0");
+    assert.equal(compactNumber(999), "999");
+    assert.equal(compactNumber(1000), "1.0K");
+    assert.equal(compactNumber(1234), "1.2K");
+    assert.equal(compactNumber(12345), "12.3K");
+    assert.equal(compactNumber(123456), "123K");
+    assert.equal(compactNumber(1234567), "1.2M");
+    assert.equal(compactNumber(5796951821), "5.8B");
+    assert.equal(compactNumber(undefined), "0");
+    assert.equal(compactNumber(-50), "0");
+});
+
+test("tokenBuckets day range fills gaps and clips old data", () => {
+    const now = new Date(2026, 10, 15, 12, 0, 0).getTime();
+    const days = [
+        ["2026-11-15", 100],
+        ["2026-11-14", 50],
+        ["2026-11-01", 7],
+    ];
+    const buckets = tokenBuckets(days, "day", now);
+
+    assert.equal(buckets.mode, "day");
+    assert.equal(buckets.values.length, 14);
+    assert.equal(buckets.values[13], 100);
+    assert.equal(buckets.values[12], 50);
+    assert.equal(buckets.total, 150);
+    assert.equal(buckets.peak, 100);
+    assert.equal(buckets.from, "2026-11-02");
+    assert.equal(buckets.to, "2026-11-15");
+});
+
+test("tokenBuckets week range starts on Monday", () => {
+    // 2026-11-15 is a Sunday, so the current week starts on 2026-11-09.
+    const now = new Date(2026, 10, 15, 12, 0, 0).getTime();
+    const days = [
+        ["2026-11-09", 10],
+        ["2026-11-11", 20],
+        ["2026-11-08", 99],
+    ];
+    const buckets = tokenBuckets(days, "week", now);
+
+    assert.equal(buckets.values.length, 12);
+    assert.equal(buckets.values[11], 30);
+    assert.equal(buckets.values[10], 99);
+    assert.equal(buckets.total, 129);
+    assert.equal(buckets.from, "2026-08-24");
+    assert.equal(buckets.to, "2026-11-15");
+});
+
+test("tokenBuckets month range groups by calendar month", () => {
+    const now = new Date(2026, 10, 15, 12, 0, 0).getTime();
+    const days = [
+        ["2026-11-01", 5],
+        ["2026-11-30", 7],
+        ["2026-05-16", 1000],
+    ];
+    const buckets = tokenBuckets(days, "month", now);
+
+    assert.equal(buckets.values.length, 12);
+    assert.equal(buckets.values[11], 12);
+    assert.equal(buckets.values[5], 1000);
+    assert.equal(buckets.from, "2025-12-01");
+    assert.equal(buckets.to, "2026-11-30");
+});
+
+test("tokenBuckets all range spans the whole history", () => {
+    const now = new Date(2026, 10, 15, 12, 0, 0).getTime();
+    const days = [
+        ["2026-05-16", 248064],
+        ["2026-07-01", 1000],
+        ["2026-10-15", 52920820],
+    ];
+    const buckets = tokenBuckets(days, "all", now);
+
+    assert.equal(buckets.values.length, 6);
+    assert.equal(buckets.values[0], 248064);
+    assert.equal(buckets.values[2], 1000);
+    assert.equal(buckets.values[5], 52920820);
+    assert.equal(buckets.from, "2026-05-01");
+    assert.equal(buckets.to, "2026-10-31");
+});
+
+test("tokenBuckets tolerates missing and malformed data", () => {
+    const now = new Date(2026, 10, 15, 12, 0, 0).getTime();
+
+    const empty = tokenBuckets(undefined, "day", now);
+    assert.equal(empty.values.length, 14);
+    assert.equal(empty.total, 0);
+    assert.equal(empty.peak, 0);
+
+    const junk = tokenBuckets(
+        [["nope", 10], ["2026-11-15"], ["2026-11-14", "abc"], [null, 1]],
+        "day",
+        now,
+    );
+    assert.equal(junk.total, 0);
+
+    const unknown = tokenBuckets([], "fortnight", now);
+    assert.equal(unknown.mode, "day");
 });
