@@ -46,6 +46,11 @@ make uninstall
 
 ## Configuration
 
+The gear icon in the popup header opens an in-widget settings dashboard:
+display toggles, the four colour groups and the background controls. It writes
+to the same configuration as the standard *Configure* dialog, so both stay in
+sync and either can be used.
+
 | Option | Default | Meaning |
 | --- | --- | --- |
 | Refresh interval | 60 s | Minimum 30 s. The API is polled on this schedule. |

@@ -3,6 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls as QQC2
+import QtQuick.Effects
 import QtQuick.Layouts
 
 import org.kde.kirigami as Kirigami
@@ -42,6 +43,7 @@ PlasmoidItem {
     property double tokensUpdated: 0
     property bool tokensBusy: false
     property string tokensError: ""
+    property bool showSettings: false
 
     readonly property var tokenBuckets: Logic.tokenBuckets(tokenDays, chartRange, now)
 
@@ -76,7 +78,11 @@ PlasmoidItem {
     }
 
     onExpandedChanged: function(isExpanded) {
-        if (!isExpanded || !showChart) {
+        if (!isExpanded) {
+            showSettings = false;
+            return;
+        }
+        if (!showChart) {
             return;
         }
         if (tokenDays === null || Date.now() - tokensUpdated > 300000) {
@@ -347,12 +353,14 @@ PlasmoidItem {
     fullRepresentation: PlasmaExtras.Representation {
         Layout.minimumWidth: Kirigami.Units.gridUnit * 16
         Layout.preferredWidth: Kirigami.Units.gridUnit * 19
-        Layout.minimumHeight: body.implicitHeight + Kirigami.Units.largeSpacing * 2
+        Layout.minimumHeight: root.showSettings
+            ? Kirigami.Units.gridUnit * 20
+            : usageContent.implicitHeight + Kirigami.Units.largeSpacing * 2
         Layout.preferredHeight: Layout.minimumHeight
 
         contentItem: Item {
-            implicitWidth: body.implicitWidth
-            implicitHeight: body.implicitHeight
+            implicitWidth: usageContent.implicitWidth
+            implicitHeight: usageContent.implicitHeight
 
             Rectangle {
                 anchors.fill: parent
@@ -373,10 +381,60 @@ PlasmoidItem {
 
                     Kirigami.Heading {
                         level: 3
-                        text: i18n("OpenCode Go Usage")
+                        text: root.showSettings ? i18n("Settings") : i18n("OpenCode Go Usage")
                         color: tokens.text
                         elide: Text.ElideRight
                         Layout.fillWidth: true
+                    }
+
+                    Item {
+                        id: settingsButton
+
+                        implicitWidth: 28
+                        implicitHeight: 28
+                        activeFocusOnTab: true
+                        Accessible.role: Accessible.Button
+                        Accessible.name: root.showSettings ? i18n("Back to usage") : i18n("Settings")
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: height / 2
+                            color: settingsHover.hovered || root.showSettings ? tokens.track : "transparent"
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: Kirigami.Units.shortDuration
+                                }
+                            }
+                        }
+
+                        Image {
+                            id: settingsIcon
+
+                            anchors.centerIn: parent
+                            width: 18
+                            height: 18
+                            source: Qt.resolvedUrl("../assets/adjustments.svg")
+                            sourceSize.width: 18
+                            sourceSize.height: 18
+                            visible: false
+                        }
+
+                        MultiEffect {
+                            anchors.fill: settingsIcon
+                            source: settingsIcon
+                            colorization: 1
+                            colorizationColor: tokens.text
+                        }
+
+                        HoverHandler {
+                            id: settingsHover
+                            cursorShape: Qt.PointingHandCursor
+                        }
+
+                        TapHandler {
+                            onTapped: root.showSettings = !root.showSettings
+                        }
                     }
 
                     PlasmaComponents.ToolButton {
@@ -392,74 +450,91 @@ PlasmoidItem {
                 }
 
                 ColumnLayout {
+                    id: usageContent
+
                     Layout.fillWidth: true
+                    visible: !root.showSettings
                     spacing: Kirigami.Units.smallSpacing
-                    visible: root.phase === "ready"
 
-                    Repeater {
-                        model: Logic.WINDOWS
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: Kirigami.Units.smallSpacing
+                        visible: root.phase === "ready"
 
-                        delegate: UsageRow {
-                            required property var modelData
+                        Repeater {
+                            model: Logic.WINDOWS
 
-                            style: tokens
-                            Layout.fillWidth: true
-                            label: modelData.label
-                            windowKey: modelData.key
-                            windowData: root.usage ? root.usage[modelData.key] : null
-                            now: root.now
-                            showPace: root.showPace
-                            showCountdown: root.showCountdown
+                            delegate: UsageRow {
+                                required property var modelData
+
+                                style: tokens
+                                Layout.fillWidth: true
+                                label: modelData.label
+                                windowKey: modelData.key
+                                windowData: root.usage ? root.usage[modelData.key] : null
+                                now: root.now
+                                showPace: root.showPace
+                                showCountdown: root.showCountdown
+                            }
                         }
+                    }
+
+                    TokenChart {
+                        visible: root.showChart && root.phase === "ready"
+
+                        style: tokens
+                        Layout.fillWidth: true
+                        Layout.topMargin: Kirigami.Units.smallSpacing
+                        buckets: root.tokenBuckets
+                        range: root.chartRange
+                        busy: root.tokensBusy
+                        errorCode: root.tokensError
+
+                        onRangePicked: function(mode) {
+                            plasmoid.configuration.chartRange = mode;
+                        }
+                    }
+
+                    Text {
+                        visible: root.phase === "loading"
+                        text: "…"
+                        color: tokens.muted
+                        font: Kirigami.Theme.defaultFont
+                        horizontalAlignment: Text.AlignHCenter
+                        Layout.fillWidth: true
+                    }
+
+                    Text {
+                        visible: root.phase === "error"
+                        text: "✗ " + root.errorLabel()
+                        color: tokens.themeNegative
+                        font: Kirigami.Theme.defaultFont
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+
+                    Item {
+                        Layout.fillHeight: true
+                    }
+
+                    Text {
+                        visible: root.phase === "ready" && root.lastUpdated > 0
+                        text: i18n("Updated %1", Qt.formatTime(new Date(root.lastUpdated), Qt.DefaultLocaleShortDate))
+                        color: tokens.muted
+                        opacity: 0.7
+                        font: Kirigami.Theme.smallFont
+                        horizontalAlignment: Text.AlignRight
+                        Layout.fillWidth: true
                     }
                 }
 
-                TokenChart {
-                    visible: root.showChart && root.phase === "ready"
+                SettingsPanel {
+                    visible: root.showSettings
 
                     style: tokens
                     Layout.fillWidth: true
-                    Layout.topMargin: Kirigami.Units.smallSpacing
-                    buckets: root.tokenBuckets
-                    range: root.chartRange
-                    busy: root.tokensBusy
-                    errorCode: root.tokensError
-
-                    onRangePicked: function(mode) {
-                        plasmoid.configuration.chartRange = mode;
-                    }
-                }
-
-                Text {
-                    visible: root.phase === "loading"
-                    text: "…"
-                    color: tokens.muted
-                    font: Kirigami.Theme.defaultFont
-                    horizontalAlignment: Text.AlignHCenter
-                    Layout.fillWidth: true
-                }
-
-                Text {
-                    visible: root.phase === "error"
-                    text: "✗ " + root.errorLabel()
-                    color: tokens.themeNegative
-                    font: Kirigami.Theme.defaultFont
-                    wrapMode: Text.WordWrap
-                    Layout.fillWidth: true
-                }
-
-                Item {
                     Layout.fillHeight: true
-                }
-
-                Text {
-                    visible: root.phase === "ready" && root.lastUpdated > 0
-                    text: i18n("Updated %1", Qt.formatTime(new Date(root.lastUpdated), Qt.DefaultLocaleShortDate))
-                    color: tokens.muted
-                    opacity: 0.7
-                    font: Kirigami.Theme.smallFont
-                    horizontalAlignment: Text.AlignRight
-                    Layout.fillWidth: true
+                    config: plasmoid.configuration
                 }
             }
         }

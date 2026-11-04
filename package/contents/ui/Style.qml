@@ -46,6 +46,12 @@ QtObject {
     readonly property color muted: Qt.rgba(text.r, text.g, text.b, 0.62)
     readonly property color track: Qt.rgba(text.r, text.g, text.b, 0.15)
 
+    // Surfaces of the settings dashboard.
+    readonly property color card: Qt.rgba(text.r, text.g, text.b, 0.05)
+    readonly property color line: Qt.rgba(text.r, text.g, text.b, 0.12)
+    readonly property color knob: Qt.rgba(1, 1, 1, 0.96)
+    readonly property color knobOff: Qt.rgba(text.r, text.g, text.b, 0.75)
+
     // Derived accents are computed here, guarded, so no view has to destructure
     // a possibly still-unresolved theme colour inside its own binding.
     function withAlpha(color, alpha) {
